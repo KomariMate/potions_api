@@ -1,5 +1,5 @@
 const express = require("express");
-const { eq } = require("drizzle-orm");
+const { eq, and, like } = require("drizzle-orm");
 
 const db = require("../db/db");
 
@@ -10,8 +10,28 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const allPotions = await db.select().from(potions);
-    return res.status(200).json(allPotions);
+    const { name, effect } = req.query;
+    let isDangerous = req.query.isDangerous;
+
+    if (!name && !effect && isDangerous === undefined) {
+      const allPotions = await db.select().from(potions);
+      return res.status(200).json(allPotions);
+    }
+
+    isDangerous = isDangerous === "true";
+
+    const queryPotions = await db
+      .select()
+      .from(potions)
+      .where(
+        and(
+          like(potions.name, `%${name}%`),
+          like(potions.effect, `${effect}`),
+          eq(potions.isDangerous, isDangerous),
+        ),
+      );
+      
+    return res.status(200).json(queryPotions);
   } catch (err) {
     return renderErrorHandler(res, err);
   }
